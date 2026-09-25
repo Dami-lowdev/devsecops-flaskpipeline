@@ -40,3 +40,23 @@ kubectl exec deploy/monapi -- id remplace le test docker exec : il vérifie dire
   - non-root : sqlite ne pouvait plus écrire dans /app → dossier /app/data dédié
   HIGH restantes : 44 Debian sans correctif (risque accepté), 5 Python → étape 2
   Leçon : un check rouge sans protection de branche n'empêche pas la fusion
+-- pip-audit est spécialisé dans l'écosystème Python, tandis que Trivy couvre beaucoup plus largement les environnements et artefacts. soit trivy examine l'image construite, alors que pip-audit se limite à Requirements.txt
+
+-- SAST :
+┌──(.venv)─(kali㉿kali)-[~/Desktop/devsecopsnumberly]
+└─$ semgrep scan --config p/python --metrics=off --sarif --output scans/semgrep.sa
+rif
+
+--Secret Scanning :
+gitleaks git --redact --report-format json --report-path scans/gitleaks.json
+
+## Étape 2 — Résultats
+  Semgrep : 4 alertes → 0 (3 problèmes réels : injection SQL [2 règles, doublon],
+            debug=True, 0.0.0.0 contextuel)
+  Gitleaks : 1 secret (SECRET_KEY, commit v0) → traité : sorti du code + .gitleaksignore justifié
+            1 secret NON détecté : k8s/secret.yaml (faible entropie) → sera traité par Vault
+  pip-audit : 4 paquets / 19 avis → 0 (Flask 3.1.3, Werkzeug 3.1.8, Jinja2 3.1.6, click 8.5.0)
+  Trivy v2 : 0 CRITICAL / 46 HIGH ; Python 19 → 3 détections
+  Découverte : msgpack et setuptools restants sont embarqués DANS pip (pip/_vendor)
+            → pip inutile en production, à retirer de l'image finale
+  Test de non-régression ajouté : test_search_is_not_injectable

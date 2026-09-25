@@ -15,7 +15,9 @@ RUN pip install --no-cache-dir --prefix=/install -r requirements.txt
 
 # --- Étape 2 : image finale, minimale ---
 FROM python:3.13-slim
-RUN useradd --create-home --uid 10001 appuser
+# v1/v2 : RUN useradd --create-home --uid 10001 appuser
+# v3 : pip retiré de l'image finale (inutile à l'exécution, embarque msgpack et setuptools vulnérables)
+RUN python -m pip uninstall -y pip && useradd --create-home --uid 10001 appuser
 WORKDIR /app
 RUN mkdir /app/data && chown appuser:appuser /app/data
 COPY --from=builder /install /usr/local
