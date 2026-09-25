@@ -35,3 +35,10 @@ def test_search_notes(client):
     client.post("/notes", json={"title": "docker"})
     results = client.get("/notes/search?q=dock").get_json()
     assert [n["title"] for n in results] == ["docker"]
+
+
+def test_search_is_not_injectable(client):
+    client.post("/notes", json={"title": "publique"})
+    client.post("/notes", json={"title": "secret", "content": "note privée"})
+    results = client.get("/notes/search?q=' OR 1=1--").get_json()
+    assert results == []

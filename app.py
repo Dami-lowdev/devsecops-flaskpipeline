@@ -1,9 +1,11 @@
 import os
+import secrets
 import sqlite3
 
 from flask import Flask, g, jsonify, request
 
-SECRET_KEY = "Kx9vQ2mZr7TbW4pLs8NdYh3F"
+# v0 : SECRET_KEY = "<valeur retirée : clé commitée, donc considérée comme compromise>"
+SECRET_KEY = os.environ.get("SECRET_KEY") or secrets.token_hex(32)
 
 app = Flask(__name__)
 app.config["SECRET_KEY"] = SECRET_KEY
@@ -58,8 +60,13 @@ def create_note():
 @app.get("/notes/search")
 def search_notes():
     q = request.args.get("q", "")
-    query = f"SELECT id, title, content FROM notes WHERE title LIKE '%{q}%'"
-    rows = get_db().execute(query).fetchall()
+    # v0 (injection SQL) :
+    # query = f"SELECT id, title, content FROM notes WHERE title LIKE '%{q}%'"
+    # rows = get_db().execute(query).fetchall()
+    rows = get_db().execute(
+        "SELECT id, title, content FROM notes WHERE title LIKE ?",
+        (f"%{q}%",),
+    ).fetchall()
     return jsonify([dict(r) for r in rows])
 
 
@@ -69,4 +76,5 @@ def config():
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    # v0 : app.run(host="0.0.0.0", port=5000, debug=True)
+    app.run(host="127.0.0.1", port=5000, debug=os.environ.get("FLASK_DEBUG") == "1")

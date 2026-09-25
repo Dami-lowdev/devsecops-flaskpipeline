@@ -1,0 +1,6 @@
+# Secrets connus, déjà traités. Chaque entrée doit être justifiée.
+#
+# SECRET_KEY Flask écrite en dur dans app.py (commit v0 7f1bf2e).
+# Clé fictive de démonstration, considérée comme compromise car publiée :
+# jamais réutilisée, remplacée par la variable d'environnement SECRET_KEY.
+7f1bf2e07ef686bb2381eec91c56ba387a4753c4:app.py:generic-api-key:6
