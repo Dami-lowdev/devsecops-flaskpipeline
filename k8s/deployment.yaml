@@ -16,7 +16,8 @@ spec:
     spec:
       containers:
         - name: monapi
-          image: monapi:dev
+          # v0 : image: monapi:dev
+          image: monapi:v1
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 5000
