@@ -1,0 +1,28 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: monapi
+  labels:
+    app: monapi
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: monapi
+  template:
+    metadata:
+      labels:
+        app: monapi
+    spec:
+      containers:
+        - name: monapi
+          image: monapi:dev
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 5000
+          env:
+            - name: STORAGE_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: monapi-secret
+                  key: storage_key

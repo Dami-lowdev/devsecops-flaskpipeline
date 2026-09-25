@@ -1,0 +1,10 @@
+.venv
+.venv-*
+.git
+.github
+__pycache__
+.pytest_cache
+tests
+k8s
+*.db
+Feuille_de_route*
