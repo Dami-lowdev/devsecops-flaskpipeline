@@ -4,3 +4,4 @@ __pycache__/
 .pytest_cache/
 *.db
 Feuille_de_route*
+scans/
