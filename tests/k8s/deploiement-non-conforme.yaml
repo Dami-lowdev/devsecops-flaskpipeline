@@ -1,0 +1,23 @@
+# Déploiement volontairement non conforme : il viole les trois politiques
+# (root, pas de limites, image :latest). Kyverno doit le refuser.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: non-conforme
+  labels:
+    app: non-conforme
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: non-conforme
+  template:
+    metadata:
+      labels:
+        app: non-conforme
+    spec:
+      containers:
+        - name: nginx
+          image: nginx:latest
+          securityContext:
+            privileged: true
