@@ -15,12 +15,85 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
-          python-version: "3.10"
+          # v0 : python-version: "3.10"
+          # Même version que l'image de production (python:3.13-slim) : on teste ce qu'on déploie
+          python-version: "3.13"
       - run: pip install -r requirements.txt -r requirements-dev.txt
       - run: python -m pytest -q
 
+  sast:
+    name: SAST (Semgrep)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.13"
+      - run: pip install semgrep==1.178.0
+
+      - name: Analyse Semgrep (échec si alerte)
+        run: semgrep scan --config p/python --metrics=off --error --sarif --output semgrep.sarif
+
+      - name: Envoi vers l'onglet Security
+        if: always()
+        uses: github/codeql-action/upload-sarif@2892aa5e19bbd11bc0cff5427e3b750a04d9e3c2 # v4
+        with:
+          sarif_file: semgrep.sarif
+          category: semgrep
+
+  secrets:
+    name: Secrets (Gitleaks)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    env:
+      GITLEAKS_VERSION: "8.30.1"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Tout l'historique : un secret supprimé reste dans les anciens commits
+          fetch-depth: 0
+
+      - name: Installation de Gitleaks (binaire officiel, empreinte vérifiée)
+        run: |
+          V=$GITLEAKS_VERSION
+          B=https://github.com/gitleaks/gitleaks/releases/download/v$V
+          curl -sSLO $B/gitleaks_${V}_linux_x64.tar.gz
+          curl -sSLO $B/gitleaks_${V}_checksums.txt
+          sha256sum --check --ignore-missing gitleaks_${V}_checksums.txt
+          tar -xzf gitleaks_${V}_linux_x64.tar.gz gitleaks
+
+      - name: Recherche de secrets dans l'historique (échec si secret)
+        run: ./gitleaks git --redact -v --report-format sarif --report-path gitleaks.sarif .
+
+      - name: Envoi vers l'onglet Security
+        if: always()
+        uses: github/codeql-action/upload-sarif@2892aa5e19bbd11bc0cff5427e3b750a04d9e3c2 # v4
+        with:
+          sarif_file: gitleaks.sarif
+          category: gitleaks
+
+  deps:
+    name: Dépendances (pip-audit)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.13"
+      - run: pip install pip-audit==2.10.1
+
+      - name: Audit des dépendances (échec si vulnérabilité connue)
+        run: pip-audit -r requirements.txt
+
   build-and-scan:
-    needs: test
+    # v0 : needs: test
+    # L'image n'est construite que si tous les contrôles du code passent
+    needs: [test, sast, secrets, deps]
     runs-on: ubuntu-latest
     permissions:
       contents: read
