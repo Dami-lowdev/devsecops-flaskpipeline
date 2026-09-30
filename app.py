@@ -70,9 +70,20 @@ def search_notes():
     return jsonify([dict(r) for r in rows])
 
 
+def read_storage_key():
+    # v0-v3 : secret lu dans la variable d'environnement STORAGE_KEY (Secret Kubernetes)
+    # v4 : secret écrit dans un fichier par l'agent Vault (/vault/secrets/storage_key)
+    path = os.environ.get("STORAGE_KEY_FILE")
+    if path and os.path.isfile(path):
+        with open(path, encoding="utf-8") as f:
+            return f.read().strip() or None
+    return os.environ.get("STORAGE_KEY")
+
+
 @app.get("/config")
 def config():
-    return jsonify(storage_key_configured=bool(os.environ.get("STORAGE_KEY")))
+    # v0-v3 : return jsonify(storage_key_configured=bool(os.environ.get("STORAGE_KEY")))
+    return jsonify(storage_key_configured=bool(read_storage_key()))
 
 
 if __name__ == "__main__":

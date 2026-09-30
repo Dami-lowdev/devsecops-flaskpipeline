@@ -13,7 +13,21 @@ spec:
     metadata:
       labels:
         app: monapi
+      # v4 : l'injecteur Vault ajoute un conteneur d'init qui s'authentifie auprès
+      # de Vault avec le ServiceAccount du pod et écrit le secret dans /vault/secrets/
+      annotations:
+        vault.hashicorp.com/agent-inject: "true"
+        vault.hashicorp.com/role: "monapi"
+        # Init seulement : secret écrit au démarrage, pas de sidecar permanent (RAM)
+        vault.hashicorp.com/agent-pre-populate-only: "true"
+        vault.hashicorp.com/agent-inject-secret-storage_key: "secret/data/monapi/config"
+        vault.hashicorp.com/agent-inject-template-storage_key: |
+          {{- with secret "secret/data/monapi/config" -}}
+          {{ .Data.data.storage_key }}
+          {{- end -}}
     spec:
+      # v0-v3 : ServiceAccount « default » implicite
+      serviceAccountName: monapi
       # v0-v3 : aucun securityContext au niveau du pod
       securityContext:
         runAsNonRoot: true
@@ -27,16 +41,20 @@ spec:
           # v0 : image: monapi:dev
           # v1 : image: monapi:v1
           # v2 : image: monapi:v2
-          image: monapi:v3
+          # v3 : image: monapi:v3
+          image: monapi:v4
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 5000
           env:
-            - name: STORAGE_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: monapi-secret
-                  key: storage_key
+            # v0-v3 : secret lu depuis le Secret Kubernetes (simple base64, commité dans Git)
+            # - name: STORAGE_KEY
+            #   valueFrom:
+            #     secretKeyRef:
+            #       name: monapi-secret
+            #       key: storage_key
+            - name: STORAGE_KEY_FILE
+              value: /vault/secrets/storage_key
           # v0-v3 : ni securityContext ni resources (refusé par les politiques Kyverno)
           securityContext:
             runAsNonRoot: true

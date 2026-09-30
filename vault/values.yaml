@@ -1,0 +1,30 @@
+# Valeurs Helm de Vault pour le projet (chart hashicorp/vault 0.34.1, Vault 2.0.4).
+# Mode dev : un seul serveur, stockage en mémoire, déverrouillé automatiquement,
+# jeton root connu. Pratique pour apprendre, INTERDIT en production.
+server:
+  dev:
+    enabled: true
+  # Sans ces limites, Vault serait refusé par la politique Kyverno require-resource-limits
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 250m
+      memory: 256Mi
+
+injector:
+  resources:
+    requests:
+      cpu: 25m
+      memory: 32Mi
+    limits:
+      cpu: 250m
+      memory: 128Mi
+  # Ressources de l'agent Vault injecté dans les pods applicatifs
+  # (valeurs par défaut du chart : 250m/64Mi demandés, trop pour ce petit cluster)
+  agentDefaults:
+    cpuRequest: 25m
+    cpuLimit: 250m
+    memRequest: 32Mi
+    memLimit: 64Mi

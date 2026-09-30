@@ -42,3 +42,19 @@ def test_search_is_not_injectable(client):
     client.post("/notes", json={"title": "secret", "content": "note privée"})
     results = client.get("/notes/search?q=' OR 1=1--").get_json()
     assert results == []
+
+
+def test_config_reads_storage_key_from_file(client, tmp_path, monkeypatch):
+    secret_file = tmp_path / "storage_key"
+    secret_file.write_text("valeur-vault\n")
+    monkeypatch.delenv("STORAGE_KEY", raising=False)
+    monkeypatch.setenv("STORAGE_KEY_FILE", str(secret_file))
+    r = client.get("/config")
+    assert r.get_json() == {"storage_key_configured": True}
+    assert "valeur-vault" not in r.get_data(as_text=True)
+
+
+def test_config_without_secret(client, monkeypatch):
+    monkeypatch.delenv("STORAGE_KEY", raising=False)
+    monkeypatch.delenv("STORAGE_KEY_FILE", raising=False)
+    assert client.get("/config").get_json() == {"storage_key_configured": False}
