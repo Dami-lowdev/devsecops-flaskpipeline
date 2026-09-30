@@ -14,6 +14,14 @@ spec:
       labels:
         app: monapi
     spec:
+      # v0-v3 : aucun securityContext au niveau du pod
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: monapi
           # v0 : image: monapi:dev
@@ -29,3 +37,48 @@ spec:
                 secretKeyRef:
                   name: monapi-secret
                   key: storage_key
+          # v0-v3 : ni securityContext ni resources (refusé par les politiques Kyverno)
+          securityContext:
+            runAsNonRoot: true
+            privileged: false
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          # Mesuré : ~40 Mo en charge légère → limite à 128 Mo
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 250m
+              memory: 128Mi
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 5000
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 5000
+            initialDelaySeconds: 5
+            periodSeconds: 20
+          # Système de fichiers en lecture seule : seuls ces dossiers sont inscriptibles
+          volumeMounts:
+            - name: data
+              mountPath: /app/data
+            - name: tmp
+              mountPath: /tmp
+            - name: home
+              mountPath: /home/appuser
+      volumes:
+        - name: data
+          emptyDir:
+            sizeLimit: 64Mi
+        - name: tmp
+          emptyDir:
+            sizeLimit: 16Mi
+        - name: home
+          emptyDir:
+            sizeLimit: 1Mi

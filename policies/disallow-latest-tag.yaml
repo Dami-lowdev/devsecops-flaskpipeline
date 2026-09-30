@@ -1,0 +1,40 @@
+# Impose un tag d'image explicite et interdit :latest,
+# pour savoir exactement quelle version tourne dans le cluster.
+apiVersion: policies.kyverno.io/v1
+kind: ValidatingPolicy
+metadata:
+  name: disallow-latest-tag
+  annotations:
+    policies.kyverno.io/title: Tag d'image explicite, jamais latest
+    policies.kyverno.io/severity: medium
+spec:
+  validationActions: [Deny]
+  failurePolicy: Fail
+  autogen:
+    podControllers:
+      controllers: [deployments, statefulsets, daemonsets, jobs, cronjobs]
+  matchConstraints:
+    resourceRules:
+      - apiGroups: [""]
+        apiVersions: [v1]
+        operations: [CREATE, UPDATE]
+        resources: [pods]
+    namespaceSelector:
+      matchExpressions:
+        - key: kubernetes.io/metadata.name
+          operator: NotIn
+          values: [kube-system, kyverno, local-path-storage]
+  variables:
+    - name: containers
+      expression: >-
+        object.spec.containers
+        + (has(object.spec.initContainers) ? object.spec.initContainers : [])
+  validations:
+    - expression: >-
+        variables.containers.all(c,
+          c.image.contains('@sha256:')
+          || (c.image.matches('^.+:[a-zA-Z0-9_][a-zA-Z0-9._-]{0,127}$')
+              && !c.image.endsWith(':latest')))
+      message: >-
+        Les images doivent avoir un tag explicite (ex. monapi:v3) ou un digest ;
+        le tag :latest et l'absence de tag sont interdits.
