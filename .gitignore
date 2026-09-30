@@ -4,4 +4,7 @@ __pycache__/
 .pytest_cache/
 *.db
 Feuille_de_route*
+# Rapports de scan : régénérables et volumineux (trivy-v0.json = 42 Mo)
 scans/
+# Notes personnelles de travail
+journal.md
