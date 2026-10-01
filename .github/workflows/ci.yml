@@ -128,3 +128,47 @@ jobs:
           severity: CRITICAL
           ignore-unfixed: true
           exit-code: "1"
+
+  dast:
+    name: DAST (OWASP ZAP)
+    # Ne teste l'application en fonctionnement que si l'image a passé Trivy
+    needs: build-and-scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Build de l'image
+        run: docker build -t monapi:${{ github.sha }} .
+
+      - name: Démarrage de l'API (mêmes protections que dans le cluster)
+        run: |
+          docker run -d --name monapi --read-only \
+            --tmpfs /tmp \
+            --tmpfs /app/data:uid=10001,gid=10001 \
+            --tmpfs /home/appuser:uid=10001,gid=10001 \
+            --cap-drop ALL --security-opt no-new-privileges \
+            -p 5000:5000 monapi:${{ github.sha }}
+          for i in $(seq 1 30); do
+            curl -sf http://localhost:5000/health && exit 0
+            sleep 1
+          done
+          docker logs monapi
+          exit 1
+
+      - name: Scan ZAP de l'API (description OpenAPI + règles .zap/rules.tsv)
+        run: |
+          mkdir zap
+          cp openapi.yaml .zap/rules.tsv zap/
+          chmod -R a+rw zap
+          docker run --rm --network host -v "$PWD/zap:/zap/wrk:rw" \
+            zaproxy/zap-stable:2.17.0@sha256:781a2bdaea47324e7bab583e2263f21d257b0aee61ed51521a5be45f5f5081ef \
+            zap-api-scan.py -t /zap/wrk/openapi.yaml -f openapi \
+            -O http://localhost:5000 -c rules.tsv \
+            -r zap-report.html -J zap-report.json
+
+      - name: Publication du rapport ZAP (artefact)
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: zap-report
+          path: zap/zap-report.*

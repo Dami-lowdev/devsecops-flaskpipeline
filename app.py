@@ -3,6 +3,7 @@ import secrets
 import sqlite3
 
 from flask import Flask, g, jsonify, request
+from werkzeug.exceptions import HTTPException
 
 # v0 : SECRET_KEY = "<valeur retirée : clé commitée, donc considérée comme compromise>"
 SECRET_KEY = os.environ.get("SECRET_KEY") or secrets.token_hex(32)
@@ -22,6 +23,27 @@ def get_db():
             "id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT NOT NULL, content TEXT)"
         )
     return g.db
+
+
+# v0-v4 : aucun en-tête de sécurité (relevé par OWASP ZAP)
+@app.after_request
+def set_security_headers(response):
+    # Interdit au navigateur de deviner le type de contenu
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    # Une API JSON n'a besoin de charger aucune ressource ni d'être affichée dans un cadre
+    response.headers["Content-Security-Policy"] = "default-src 'none'; frame-ancestors 'none'"
+    response.headers["Cross-Origin-Resource-Policy"] = "same-origin"
+    response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
+    # Les réponses (notes, état de configuration) ne doivent pas être mises en cache
+    response.headers["Cache-Control"] = "no-store"
+    return response
+
+
+# v0-v4 : erreurs renvoyées en page HTML par défaut de Flask
+@app.errorhandler(HTTPException)
+def handle_http_error(error):
+    # Erreurs au format JSON, sans détail interne
+    return jsonify(error=error.name), error.code
 
 
 @app.teardown_appcontext
@@ -70,9 +92,20 @@ def search_notes():
     return jsonify([dict(r) for r in rows])
 
 
+def read_storage_key():
+    # v0-v3 : secret lu dans la variable d'environnement STORAGE_KEY (Secret Kubernetes)
+    # v4 : secret écrit dans un fichier par l'agent Vault (/vault/secrets/storage_key)
+    path = os.environ.get("STORAGE_KEY_FILE")
+    if path and os.path.isfile(path):
+        with open(path, encoding="utf-8") as f:
+            return f.read().strip() or None
+    return os.environ.get("STORAGE_KEY")
+
+
 @app.get("/config")
 def config():
-    return jsonify(storage_key_configured=bool(os.environ.get("STORAGE_KEY")))
+    # v0-v3 : return jsonify(storage_key_configured=bool(os.environ.get("STORAGE_KEY")))
+    return jsonify(storage_key_configured=bool(read_storage_key()))
 
 
 if __name__ == "__main__":

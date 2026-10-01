@@ -1,0 +1,60 @@
+openapi: 3.0.3
+info:
+  title: monapi
+  description: API de notes du projet DevSecOps (Flask + SQLite).
+  version: "4"
+servers:
+  - url: http://localhost:5000
+paths:
+  /health:
+    get:
+      summary: État de l'API
+      responses:
+        "200":
+          description: API opérationnelle
+  /notes:
+    get:
+      summary: Liste des notes
+      responses:
+        "200":
+          description: Liste des notes
+    post:
+      summary: Création d'une note
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [title]
+              properties:
+                title:
+                  type: string
+                  example: docker
+                content:
+                  type: string
+                  example: note de test
+      responses:
+        "201":
+          description: Note créée
+        "400":
+          description: Titre manquant
+  /notes/search:
+    get:
+      summary: Recherche de notes par titre
+      parameters:
+        - name: q
+          in: query
+          required: false
+          schema:
+            type: string
+            example: dock
+      responses:
+        "200":
+          description: Notes correspondantes
+  /config:
+    get:
+      summary: Indique si le secret est configuré (sans jamais le révéler)
+      responses:
+        "200":
+          description: État de la configuration
