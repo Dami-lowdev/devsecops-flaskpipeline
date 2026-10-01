@@ -1,0 +1,8 @@
+# Règles OWASP ZAP : identifiant<TAB>action<TAB>(nom) : justification
+# Par défaut, toute alerte est un WARN et fait échouer le pipeline.
+# IGNORE : faux positif avéré, masqué. INFO : risque accepté, visible dans le rapport mais non bloquant.
+40018	FAIL	(SQL Injection) : bloquant explicitement, faille corrigée à l'étape 2
+10049	IGNORE	(Non-Storable Content) : informatif ; Cache-Control: no-store est volontaire, l'API sert des données à ne pas mettre en cache
+40014	INFO	(Cross Site Scripting Weakness, Persistent in JSON Response) : réponse JSON + nosniff + CSP default-src 'none', non exécutable dans un navigateur ; un futur front-end devra échapper les données
+10106	INFO	(HTTP Only Site) : pas de TLS dans l'environnement de test ; en production le TLS serait terminé en amont (Ingress)
+100001	INFO	(Unexpected Content-Type) : uniquement sur des requêtes malformées rejetées par gunicorn avant Flask (page 400 HTML de gunicorn)

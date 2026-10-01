@@ -58,3 +58,21 @@ def test_config_without_secret(client, monkeypatch):
     monkeypatch.delenv("STORAGE_KEY", raising=False)
     monkeypatch.delenv("STORAGE_KEY_FILE", raising=False)
     assert client.get("/config").get_json() == {"storage_key_configured": False}
+
+
+def test_security_headers(client):
+    r = client.get("/health")
+    assert r.headers["X-Content-Type-Options"] == "nosniff"
+    assert r.headers["Content-Security-Policy"] == "default-src 'none'; frame-ancestors 'none'"
+    assert r.headers["Cross-Origin-Resource-Policy"] == "same-origin"
+    assert r.headers["Cache-Control"] == "no-store"
+
+
+def test_errors_are_json(client):
+    r = client.get("/inexistant")
+    assert r.status_code == 404
+    assert r.is_json
+    assert r.get_json() == {"error": "Not Found"}
+    r = client.delete("/health")
+    assert r.status_code == 405
+    assert r.is_json

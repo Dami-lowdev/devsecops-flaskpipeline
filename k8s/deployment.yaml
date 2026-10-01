@@ -42,7 +42,8 @@ spec:
           # v1 : image: monapi:v1
           # v2 : image: monapi:v2
           # v3 : image: monapi:v3
-          image: monapi:v4
+          # v4 : image: monapi:v4
+          image: monapi:v5
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 5000
